@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -10,10 +11,17 @@ namespace DotnetDependencyGrapher;
 
 internal class DependencyGrapher
 {
-    private Dictionary<AssemblyName, HashSet<AssemblyName>> _dependencies = new Dictionary<AssemblyName, HashSet<AssemblyName>>(new AssemblyComparer());
-    private Dictionary<AssemblyName, HashSet<AssemblyName>> _referencers = new Dictionary<AssemblyName, HashSet<AssemblyName>>(new AssemblyComparer());
-    private Dictionary<AssemblyName, string> _targetFrameworks = new Dictionary<AssemblyName, string>(new AssemblyComparer());
-    private Dictionary<string, HashSet<Version>> _versionsPerAssembly = new Dictionary<string, HashSet<Version>>();
+    private readonly Dictionary<AssemblyName, HashSet<AssemblyName>> _dependencies = new Dictionary<AssemblyName, HashSet<AssemblyName>>(new AssemblyComparer());
+    private readonly Dictionary<AssemblyName, HashSet<AssemblyName>> _referencers = new Dictionary<AssemblyName, HashSet<AssemblyName>>(new AssemblyComparer());
+    private readonly Dictionary<AssemblyName, string> _targetFrameworks = new Dictionary<AssemblyName, string>(new AssemblyComparer());
+    private readonly Dictionary<string, HashSet<Version>> _versionsPerAssembly = new Dictionary<string, HashSet<Version>>();
+
+    private readonly ILogger<DependencyGrapher> _logger;
+
+    public DependencyGrapher(ILogger<DependencyGrapher> logger)
+    {
+        ArgumentNullException.ThrowIfNull(_logger = logger);
+    }
 
     public void Run(Options options)
     {
@@ -25,14 +33,10 @@ internal class DependencyGrapher
 
         Collect(rootAssemblyName);
 
-        Console.ForegroundColor = ConsoleColor.Red;
-
         foreach (var pair in _versionsPerAssembly.Where(x => x.Value.Count > 1))
         {
-            Console.WriteLine($"Version conflict for '{pair.Key}' ({string.Join(", ", pair.Value)})");
+            _logger.LogError($"Version conflict for '{pair.Key}' ({string.Join(", ", pair.Value)})");
         }
-
-        Console.ForegroundColor = ConsoleColor.White;
     }
 
     private void Collect(AssemblyName assemblyName)
@@ -47,6 +51,8 @@ internal class DependencyGrapher
         // Get (or try to download from Nuget) assembly
         if (!TryGetAssembly(assemblyName, out Assembly assembly))
             return;
+
+        _logger.LogInformation("Checking dependencies for {AssemblyName}...", assemblyName);
 
         TargetFrameworkAttribute targetFrameworkAttribute = assembly.GetCustomAttribute<TargetFrameworkAttribute>();
         _targetFrameworks.Add(assemblyName, targetFrameworkAttribute?.FrameworkName);
