@@ -21,11 +21,13 @@ public class Program
 
     private static void ConfigureServices(IServiceCollection services)
     {
-        services.AddLogging(configure => configure.AddConsole(c =>
-        {
-            c.TimestampFormat = "[HH:mm:ss] ";
-            c.FormatterName = ConsoleFormatterNames.Simple;
-        }));
+        services.AddLogging(configure => configure
+            .AddConsole(c => {
+                c.TimestampFormat = "[HH:mm:ss] ";
+                c.FormatterName = ConsoleFormatterNames.Simple;
+                c.FormatterName = "Pretty";
+            })
+            .AddConsoleFormatter<PrettyConsoleFormatter, PrettyConsoleOptions>());
 
         services.AddTransient<DependencyGrapher>();
     }

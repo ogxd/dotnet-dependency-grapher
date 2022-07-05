@@ -15,27 +15,82 @@ internal class DependencyGrapher
     private readonly Dictionary<AssemblyName, HashSet<AssemblyName>> _referencers = new Dictionary<AssemblyName, HashSet<AssemblyName>>(new AssemblyComparer());
     private readonly Dictionary<AssemblyName, string> _targetFrameworks = new Dictionary<AssemblyName, string>(new AssemblyComparer());
     private readonly Dictionary<string, HashSet<Version>> _versionsPerAssembly = new Dictionary<string, HashSet<Version>>();
+    private readonly Dictionary<AssemblyName, Assembly> _loadedAssemblies = new Dictionary<AssemblyName, Assembly>();
 
     private readonly ILogger<DependencyGrapher> _logger;
+
+    private string _currentDirectory;
+
+    private Options _options;
 
     public DependencyGrapher(ILogger<DependencyGrapher> logger)
     {
         ArgumentNullException.ThrowIfNull(_logger = logger);
     }
 
+    private static AssemblyName GetAssemblyName(string name, Version version)
+    {
+        var assemblyName = new AssemblyName();
+        assemblyName.Name = name;
+        assemblyName.Version = version;
+        return assemblyName;
+    }
+
     public void Run(Options options)
     {
+        _options = options;
+
         Directory.CreateDirectory("tmp");
 
-        AssemblyName rootAssemblyName = new AssemblyName();
-        rootAssemblyName.Name = options.Name;
-        rootAssemblyName.Version = new Version(options.Version);
+        AssemblyName rootAssemblyName;
+
+        if (string.IsNullOrEmpty(options.File))
+        {
+            // Load from NuGet using name and version
+            rootAssemblyName = GetAssemblyName(options.Name, new Version(options.Version));
+        }
+        else
+        {
+            // Load from file (DLL)
+            Assembly rootAssembly = Assembly.LoadFile(options.File);
+            rootAssemblyName = rootAssembly.GetName();
+            _loadedAssemblies.Add(rootAssemblyName, rootAssembly);
+            _currentDirectory = Path.GetDirectoryName(options.File);
+        }
 
         Collect(rootAssemblyName);
 
-        foreach (var pair in _versionsPerAssembly.Where(x => x.Value.Count > 1))
+        foreach (var pair in _versionsPerAssembly)
         {
-            _logger.LogError($"Version conflict for '{pair.Key}' ({string.Join(", ", pair.Value)})");
+            // Check if conflict
+            if (pair.Value.Count <= 1)
+                continue;
+
+            Version minVersion = pair.Value.Min();
+            Version maxVersion = pair.Value.Max();
+
+            // Check conflict severity
+            if (minVersion.MajorRevision == maxVersion.Major
+             && minVersion.MinorRevision == maxVersion.MinorRevision)
+                continue;
+
+            var frameworks = new HashSet<string>(pair.Value.Select(x => _targetFrameworks[GetAssemblyName(pair.Key, x)]));
+            if (frameworks.Count > 1)
+                _logger.LogError($"Framework conflict for '{pair.Key}'");
+
+            _logger.LogError($"Version conflict for '{pair.Key}'");
+
+            foreach (var version in pair.Value)
+            {
+                var conflictingAssembly = GetAssemblyName(pair.Key, version);
+
+                _logger.LogError($"- '{version}' ({_targetFrameworks[conflictingAssembly]})");
+
+                foreach (var referencer in _referencers[conflictingAssembly])
+                {
+                    _logger.LogError($"  - '{referencer.Name} {referencer.Version}' ({_targetFrameworks[referencer]})");
+                }
+            }
         }
     }
 
@@ -78,10 +133,33 @@ internal class DependencyGrapher
     {
         assembly = null;
 
-        var searchPath = $@"tmp\{assemblyName.Name}.{assemblyName.Version.Major}.{assemblyName.Version.Minor}.{assemblyName.Version.Build}\lib";
+        // Check if already loaded
+        if (_loadedAssemblies.TryGetValue(assemblyName, out assembly))
+            return true;
+
+        // Check if not in current directory
+        string localDll = Path.Combine(_currentDirectory, assemblyName.Name + ".dll");
+        if (File.Exists(localDll))
+        {
+            var assemblyTmp = Assembly.LoadFile(localDll);
+            var assemblyNameTmp = assemblyTmp.GetName();
+
+            _loadedAssemblies.TryAdd(assemblyNameTmp, assemblyTmp);
+
+            if (assemblyName.Name == assemblyNameTmp.Name
+             && assemblyName.Version == assemblyNameTmp.Version)
+            {
+                assembly = assemblyTmp;
+                return true;
+            }
+        }
+
+        // Search in NuGet local cache
+        string searchPath = $@"tmp\{assemblyName.Name}.{assemblyName.Version.Major}.{assemblyName.Version.Minor}.{assemblyName.Version.Build}\lib";
 
         if (!Directory.Exists(searchPath))
         {
+            // Try download from NuGet
             Process process = new Process();
             process.StartInfo.UseShellExecute = false;
             process.StartInfo.RedirectStandardError = false;
@@ -89,7 +167,7 @@ internal class DependencyGrapher
             process.StartInfo.RedirectStandardOutput = false;
             process.StartInfo.FileName = "nuget";
             // https://docs.microsoft.com/en-us/nuget/reference/cli-reference/cli-ref-install
-            process.StartInfo.Arguments = $"install {assemblyName.Name} -NonInteractive -Source GitLab -OutputDirectory tmp -Version {assemblyName.Version} -Verbosity quiet -DependencyVersion Ignore";
+            process.StartInfo.Arguments = $"install {assemblyName.Name} -NonInteractive -Source {_options.Source} -OutputDirectory tmp -Version {assemblyName.Version} -Verbosity quiet -DependencyVersion Ignore";
             // -FallbackSource NuGet
             // -DirectDownload
             process.Start();
@@ -108,6 +186,8 @@ internal class DependencyGrapher
         lib = Path.GetFullPath(lib);
 
         assembly = Assembly.LoadFile(lib);
+
+        _loadedAssemblies.Add(assemblyName, assembly);
 
         return true;
     }
