@@ -13,7 +13,7 @@ public class Options
     [Option('v', "version", Required = false, HelpText = "Package version")]
     public string Version { get; set; }
 
-    [Option('s', "source", Required = false, HelpText = "Nuget source (default is official Nuget)", Default = "Nuget")]
+    [Option('s', "source", Required = false, HelpText = "Nuget source (default is official Nuget)", Default = "nuget.org")]
     public string Source { get; set; }
 
 }

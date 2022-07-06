@@ -44,10 +44,13 @@ internal class DependencyGrapher
 
         AssemblyName rootAssemblyName;
 
+        _logger.LogInformation("Start!");
+
         if (string.IsNullOrEmpty(options.File))
         {
             // Load from NuGet using name and version
             rootAssemblyName = GetAssemblyName(options.Name, new Version(options.Version));
+            _currentDirectory = string.Empty;
         }
         else
         {
@@ -92,6 +95,8 @@ internal class DependencyGrapher
                 }
             }
         }
+
+        _logger.LogInformation("Finished!");
     }
 
     private void Collect(AssemblyName assemblyName)
@@ -155,7 +160,7 @@ internal class DependencyGrapher
         }
 
         // Search in NuGet local cache
-        string searchPath = $@"tmp\{assemblyName.Name}.{assemblyName.Version.Major}.{assemblyName.Version.Minor}.{assemblyName.Version.Build}\lib";
+        string searchPath = Path.Combine(Directory.GetCurrentDirectory(), "tmp", $"{assemblyName.Name}.{assemblyName.Version.Major}.{assemblyName.Version.Minor}.{assemblyName.Version.Build}", "lib");
 
         if (!Directory.Exists(searchPath))
         {
@@ -207,5 +212,10 @@ internal class DependencyGrapher
             return true;
 
         return false;
+    }
+
+    private void WritePlantUML()
+    {
+
     }
 }
