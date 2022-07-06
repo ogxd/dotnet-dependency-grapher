@@ -61,7 +61,9 @@ internal class DependencyGrapher
             _currentDirectory = Path.GetDirectoryName(options.File);
         }
 
-        Collect(rootAssemblyName);
+        TryCollect(rootAssemblyName);
+
+        WritePlantUML();
 
         foreach (var pair in _versionsPerAssembly)
         {
@@ -99,18 +101,18 @@ internal class DependencyGrapher
         _logger.LogInformation("Finished!");
     }
 
-    private void Collect(AssemblyName assemblyName)
+    private bool TryCollect(AssemblyName assemblyName)
     {
         if (ShouldIgnore(assemblyName))
-            return;
+            return false;
 
         // Collect dependencies of a given assembly not more than once
         if (_dependencies.ContainsKey(assemblyName))
-            return;
+            return false;
 
         // Get (or try to download from Nuget) assembly
         if (!TryGetAssembly(assemblyName, out Assembly assembly))
-            return;
+            return false;
 
         _logger.LogInformation("Checking dependencies for {AssemblyName}...", assemblyName);
 
@@ -125,13 +127,16 @@ internal class DependencyGrapher
 
         foreach (AssemblyName dependency in assembly.GetReferencedAssemblies())
         {
-            dependencies.Add(dependency);
+            if (TryCollect(dependency))
+            {
+                dependencies.Add(dependency);
 
-            var referencers = _referencers.GetOrAdd(dependency, static (_) => new HashSet<AssemblyName>(new AssemblyComparer()));
-            referencers.Add(assemblyName);
-
-            Collect(dependency);
+                var referencers = _referencers.GetOrAdd(dependency, static (_) => new HashSet<AssemblyName>(new AssemblyComparer()));
+                referencers.Add(assemblyName);
+            }
         }
+
+        return true;
     }
 
     private bool TryGetAssembly(AssemblyName assemblyName, out Assembly assembly)
@@ -216,6 +221,34 @@ internal class DependencyGrapher
 
     private void WritePlantUML()
     {
+        using (var fs = new FileStream("diagram.plantuml", FileMode.Create))
+        using (var sr = new StreamWriter(fs))
+        {
+            sr.WriteLine("@startuml");
+            sr.WriteLine("set namespaceSeparator none");
+            sr.WriteLine("hide empty members");
+            sr.WriteLine("skinparam dpi 300");
 
+            sr.WriteLine(string.Empty);
+
+            foreach (var pair in _versionsPerAssembly)
+            {
+                sr.WriteLine($"class \"{pair.Key}\" {{"); // #pink ##[bold]red
+                sr.WriteLine(string.Join("\n__\n", pair.Value.Select(x => $"+ {x}")));
+                sr.WriteLine("}");
+
+                sr.WriteLine(string.Empty);
+            }
+
+            foreach (var pair in _dependencies)
+            {
+                foreach (var dep in pair.Value)
+                {
+                    sr.WriteLine($"\"{pair.Key.Name}::{pair.Key.Version}\" ---> \"{dep.Name}::{dep.Version}\"");
+                }
+            }
+
+            sr.WriteLine("@enduml");
+        }
     }
 }
