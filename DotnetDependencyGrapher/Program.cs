@@ -1,4 +1,6 @@
 ﻿using CommandLine;
+using DotnetDependencyGrapher.Graphs;
+using DotnetDependencyGrapher.Writers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
@@ -9,17 +11,20 @@ public class Program
 {
     public static void Main(string[] args)
     {
+        var options = Parser.Default.ParseArguments<Options>(args).Value;
+
         var serviceCollection = new ServiceCollection();
-        ConfigureServices(serviceCollection);
+        ConfigureServices(serviceCollection, options);
 
         var serviceProvider = serviceCollection.BuildServiceProvider();
 
-        var dependencyGrapher = serviceProvider.GetService<DependencyGrapher>();
+        var graph = serviceProvider.GetService<IAssemblyDependencyGraph>();
+        var writer = serviceProvider.GetService<IOutputWriter>();
 
-        Parser.Default.ParseArguments<Options>(args).WithParsed<Options>(dependencyGrapher.Run);
+        writer.Write(graph);
     }
 
-    private static void ConfigureServices(IServiceCollection services)
+    private static void ConfigureServices(IServiceCollection services, Options options)
     {
         services.AddLogging(configure => configure
             .AddConsole(c => {
@@ -29,6 +34,9 @@ public class Program
             })
             .AddConsoleFormatter<PrettyConsoleFormatter, PrettyConsoleOptions>());
 
-        services.AddTransient<DependencyGrapher>();
+        services.AddTransient(x => options);
+        services.AddTransient<IAssemblyDependencyGraph, NugetDependencyGraph>();
+        //services.AddTransient<IOutputWriter, PlantUmlWriter>();
+        services.AddTransient<IOutputWriter, CsvReferencersWriter>();
     }
 }

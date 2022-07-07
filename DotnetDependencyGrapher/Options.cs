@@ -1,11 +1,12 @@
 ﻿using CommandLine;
+using System.Collections.Generic;
 
 namespace DotnetDependencyGrapher;
 
 public class Options
 {
     [Option('f', "file", Required = false, HelpText = "DLL path")]
-    public string File { get; set; }
+    public IEnumerable<string> File { get; set; }
 
     [Option('n', "name", Required = false, HelpText = "Package name")]
     public string Name { get; set; }
