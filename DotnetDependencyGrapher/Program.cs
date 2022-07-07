@@ -36,7 +36,17 @@ public class Program
 
         services.AddTransient(x => options);
         services.AddTransient<IAssemblyDependencyGraph, NugetDependencyGraph>();
-        //services.AddTransient<IOutputWriter, PlantUmlWriter>();
-        services.AddTransient<IOutputWriter, CsvReferencersWriter>();
+
+        switch (options.Export)
+        {
+            case "csv":
+            case "csvreferencers":
+                services.AddTransient<IOutputWriter, CsvReferencersWriter>();
+                break;
+            case "plantuml":
+            default:
+                services.AddTransient<IOutputWriter, PlantUmlWriter>();
+                break;
+        }
     }
 }

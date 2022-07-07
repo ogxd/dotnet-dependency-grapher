@@ -17,4 +17,6 @@ public class Options
     [Option('s', "source", Required = false, HelpText = "Nuget source (default is official Nuget)", Default = "nuget.org")]
     public string Source { get; set; }
 
+    [Option('e', "export", Required = false, HelpText = "Export mode", Default = "plantuml")]
+    public string Export { get; set; }
 }
