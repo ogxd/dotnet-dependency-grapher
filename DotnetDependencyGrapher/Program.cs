@@ -43,6 +43,9 @@ public class Program
             case "csvreferencers":
                 services.AddTransient<IOutputWriter, CsvReferencersWriter>();
                 break;
+            case "circular":
+                services.AddTransient<IOutputWriter, CircularReferencesWriter>();
+                break;
             case "plantuml":
             default:
                 services.AddTransient<IOutputWriter, PlantUmlWriter>();
