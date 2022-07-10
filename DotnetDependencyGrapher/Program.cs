@@ -27,6 +27,7 @@ public class Program
     private static void ConfigureServices(IServiceCollection services, Options options)
     {
         services.AddLogging(configure => configure
+            .SetMinimumLevel(options.Quiet ? LogLevel.Critical : LogLevel.Information)
             .AddConsole(c => {
                 c.TimestampFormat = "[HH:mm:ss] ";
                 c.FormatterName = ConsoleFormatterNames.Simple;

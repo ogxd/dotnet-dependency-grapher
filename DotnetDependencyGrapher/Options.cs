@@ -19,4 +19,7 @@ public class Options
 
     [Option('e', "export", Required = false, HelpText = "Export mode", Default = "plantuml")]
     public string Export { get; set; }
+
+    [Option('q', "quiet", Required = false, HelpText = "Quiet mode", Default = false)]
+    public bool Quiet { get; set; }
 }
