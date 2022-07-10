@@ -39,10 +39,13 @@ internal class NugetDependencyGraph : IAssemblyDependencyGraph
             foreach (var file in options.File)
             {
                 // Load from file (DLL)
-                Assembly rootAssembly = Assembly.LoadFile(file);
+                var fileAbsolute = file;
+                if (!Path.IsPathRooted(fileAbsolute))
+                    fileAbsolute = Path.Combine(Directory.GetCurrentDirectory(), file);
+                Assembly rootAssembly = Assembly.LoadFile(fileAbsolute);
                 AssemblyName rootAssemblyName = rootAssembly.GetName();
                 _loadedAssemblies.Add(rootAssemblyName, rootAssembly);
-                _currentDirectory = Path.GetDirectoryName(file);
+                _currentDirectory = Path.GetDirectoryName(fileAbsolute);
 
                 TryCollect(rootAssemblyName);
             }
@@ -123,6 +126,8 @@ internal class NugetDependencyGraph : IAssemblyDependencyGraph
 
         if (!Directory.Exists(searchPath))
         {
+            _logger.LogInformation("Downloading {Assembly}...", assemblyName);
+
             // Try download from NuGet
             Process process = new Process();
             process.StartInfo.UseShellExecute = false;
@@ -131,7 +136,7 @@ internal class NugetDependencyGraph : IAssemblyDependencyGraph
             process.StartInfo.RedirectStandardOutput = false;
             process.StartInfo.FileName = "nuget";
             // https://docs.microsoft.com/en-us/nuget/reference/cli-reference/cli-ref-install
-            process.StartInfo.Arguments = $"install {assemblyName.Name} -NonInteractive -Source {_options.Source} -FallbackSource nuget.org -OutputDirectory tmp -Version {assemblyName.Version} -Verbosity quiet -DependencyVersion Ignore";
+            process.StartInfo.Arguments = $"install {assemblyName.Name} -NonInteractive -Source {_options.Source} -OutputDirectory tmp -Version {assemblyName.Version} -Verbosity quiet -DependencyVersion Ignore";
             // -FallbackSource nuget.org
             // -DirectDownload
             process.Start();
