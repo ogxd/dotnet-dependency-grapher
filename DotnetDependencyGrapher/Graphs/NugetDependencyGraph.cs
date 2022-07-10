@@ -68,15 +68,15 @@ internal class NugetDependencyGraph : IAssemblyDependencyGraph
         if (_dependencies.ContainsKey(assemblyName))
             return false;
 
+        // Add this version to the version per assembly dictionary, in order to highlight eventual conflicts
+        var versionsPerAssembly = _versionsPerAssembly.GetOrAdd(assemblyName.Name, static (_) => new HashSet<Version>());
+        versionsPerAssembly.Add(assemblyName.Version);
+
         // Get (or try to download from Nuget) assembly
         if (!TryGetAssembly(assemblyName, out Assembly assembly))
             return false;
 
         _logger.LogInformation("Checking dependencies for {AssemblyName}...", assemblyName);
-
-        // Add this version to the version per assembly dictionary, in order to highlight eventual conflicts
-        var versionsPerAssembly = _versionsPerAssembly.GetOrAdd(assemblyName.Name, static (_) => new HashSet<Version>());
-        versionsPerAssembly.Add(assemblyName.Version);
 
         var dependencies = _dependencies.GetOrAdd(assemblyName, static (_) => new HashSet<AssemblyName>(new AssemblyComparer()));
 
