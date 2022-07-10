@@ -128,20 +128,27 @@ internal class NugetDependencyGraph : IAssemblyDependencyGraph
         {
             _logger.LogInformation("Downloading {Assembly}...", assemblyName);
 
-            // Try download from NuGet
-            Process process = new Process();
-            process.StartInfo.UseShellExecute = false;
-            process.StartInfo.RedirectStandardError = false;
-            process.StartInfo.RedirectStandardInput = false;
-            process.StartInfo.RedirectStandardOutput = false;
-            process.StartInfo.FileName = "nuget";
-            // https://docs.microsoft.com/en-us/nuget/reference/cli-reference/cli-ref-install
-            process.StartInfo.Arguments = $"install {assemblyName.Name} -NonInteractive -Source {_options.Source} -OutputDirectory tmp -Version {assemblyName.Version} -Verbosity quiet -DependencyVersion Ignore";
-            // -FallbackSource nuget.org
-            // -DirectDownload
-            process.Start();
+            try
+            {
+                // Try download from NuGet
+                Process process = new Process();
+                process.StartInfo.UseShellExecute = false;
+                process.StartInfo.RedirectStandardError = false;
+                process.StartInfo.RedirectStandardInput = false;
+                process.StartInfo.RedirectStandardOutput = false;
+                process.StartInfo.FileName = "nuget";
+                // https://docs.microsoft.com/en-us/nuget/reference/cli-reference/cli-ref-install
+                process.StartInfo.Arguments = $"install {assemblyName.Name} -NonInteractive -Source {_options.Source} -OutputDirectory tmp -Version {assemblyName.Version} -Verbosity quiet -DependencyVersion Ignore";
+                // -FallbackSource nuget.org
+                // -DirectDownload
+                process.Start();
 
-            process.WaitForExit();
+                process.WaitForExit();
+            } catch (Exception ex)
+            {
+                _logger.LogError(ex, "Could not download package {Package}:{Version} from NuGet", assemblyName.Name, assemblyName.Version);
+                return false;
+            }
 
             if (!Directory.Exists(searchPath))
                 return false;
