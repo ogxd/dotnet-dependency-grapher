@@ -138,7 +138,7 @@ internal class NugetDependencyGraph : IAssemblyDependencyGraph
                 process.StartInfo.RedirectStandardOutput = false;
                 process.StartInfo.FileName = "nuget";
                 // https://docs.microsoft.com/en-us/nuget/reference/cli-reference/cli-ref-install
-                process.StartInfo.Arguments = $"install {assemblyName.Name} -NonInteractive -Source {_options.Source} -OutputDirectory tmp -Version {assemblyName.Version} -Verbosity quiet -DependencyVersion Ignore";
+                process.StartInfo.Arguments = $"install {assemblyName.Name} -NonInteractive -Source {_options.Source} -OutputDirectory tmp -Version {assemblyName.Version} -Verbosity quiet"; // -DependencyVersion Ignore (requires nuget 4.4+)
                 // -FallbackSource nuget.org
                 // -DirectDownload
                 process.Start();
