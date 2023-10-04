@@ -22,7 +22,7 @@ internal class NugetDependencyGraph : IAssemblyDependencyGraph
     private readonly Options _options;
 
     public IReadOnlyDictionary<AssemblyName, HashSet<AssemblyName>> Dependencies => _dependencies;
-    public IReadOnlyDictionary<AssemblyName, HashSet<AssemblyName>> Referencers => _referencers;
+    public IReadOnlyDictionary<AssemblyName, HashSet<AssemblyName>> References => _referencers;
     public IReadOnlyDictionary<string, HashSet<Version>> VersionsPerAssembly => _versionsPerAssembly;
 
     public NugetDependencyGraph(Options options, ILogger<NugetDependencyGraph> logger)

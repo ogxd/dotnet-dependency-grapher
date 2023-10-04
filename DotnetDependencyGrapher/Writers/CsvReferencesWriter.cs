@@ -6,25 +6,25 @@ using System.Linq;
 
 namespace DotnetDependencyGrapher.Writers;
 
-public class CsvReferencersWriter : IOutputWriter
+public class CsvReferencesWriter : IOutputWriter
 {
     private readonly ILogger<PlantUmlWriter> _logger;
 
-    public CsvReferencersWriter(ILogger<PlantUmlWriter> logger)
+    public CsvReferencesWriter(ILogger<PlantUmlWriter> logger)
     {
         ArgumentNullException.ThrowIfNull(_logger = logger);
     }
 
     public void Write(IAssemblyDependencyGraph graph)
     {
-        _logger.LogInformation("Start writing CSV...");
+        _logger.LogInformation("Start writing References...");
 
-        string path = Path.Combine(Directory.GetCurrentDirectory(), "referencers.csv");
+        string path = Path.Combine(Directory.GetCurrentDirectory(), "references.csv");
 
         using (var fs = new FileStream(path, FileMode.Create))
         using (var sr = new StreamWriter(fs))
         {
-            foreach (var pair in graph.Referencers.OrderBy(x => x.Key.Name))
+            foreach (var pair in graph.References.OrderBy(x => x.Key.Name))
             {
                 // One line per package
                 //sr.Write(pair.Key.Name);
@@ -49,6 +49,6 @@ public class CsvReferencersWriter : IOutputWriter
             }
         }
 
-        _logger.LogInformation("CSV written to {FilePath}", path);
+        _logger.LogInformation("References written to {FilePath}", path);
     }
 }

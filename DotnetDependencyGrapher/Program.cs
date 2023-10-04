@@ -38,15 +38,19 @@ public class Program
         services.AddTransient(x => options);
         services.AddTransient<IAssemblyDependencyGraph, NugetDependencyGraph>();
 
-        switch (options.Export)
+        switch (options.Export.ToLowerInvariant())
         {
-            case "csv":
-            case "csvreferencers":
-                services.AddTransient<IOutputWriter, CsvReferencersWriter>();
+            case "refs":
+            case "references":
+                services.AddTransient<IOutputWriter, CsvReferencesWriter>();
                 break;
             case "circular":
                 services.AddTransient<IOutputWriter, CircularReferencesWriter>();
                 break;
+            case "overview":
+                services.AddTransient<IOutputWriter, OverviewWriter>();
+                break;
+            case "graph":
             case "plantuml":
             default:
                 services.AddTransient<IOutputWriter, PlantUmlWriter>();

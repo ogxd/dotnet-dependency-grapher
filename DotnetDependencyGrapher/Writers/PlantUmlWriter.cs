@@ -39,7 +39,7 @@ public class PlantUmlWriter : IOutputWriter
 
                 // If single version + no referencers => Entry point
                 if (pair.Value.Count == 1
-                 && (!graph.Referencers.ContainsKey(firstVersion) || graph.Referencers[firstVersion].Count == 0))
+                 && (!graph.References.ContainsKey(firstVersion) || graph.References[firstVersion].Count == 0))
                 {
                     style = "#lightblue ##[bold]blue";
                 }
